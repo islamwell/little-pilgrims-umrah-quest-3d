@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Little Pilgrim's Umrah Quest: Journey of Sabr & Light</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    * {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    body {
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #0c1017;
+      color: #1e293b;
+    }
+    .arabic-text {
+      font-family: 'Amiri', serif;
+      direction: rtl;
+    }
+    /* Smooth glassmorphism */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+    .glass-dark {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #f8fafc;
+    }
+    /* Touch controls */
+    #touch-joystick-area {
+      touch-action: none;
+    }
+    /* Custom scrollbar for cards */
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    /* Pulse animations */
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.04); }
+    }
+    .pulse-glow {
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden select-none">
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="webgl-container" class="absolute inset-0 z-0"></div>
+
+  <!-- TOP HEADER HUD -->
+  <header class="absolute top-0 left-0 right-0 z-20 p-2 sm:p-4 flex items-center justify-between pointer-events-none">
+    <!-- Title & Pilgrim Status -->
+    <div class="pointer-events-auto flex items-center gap-2 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-amber-200/60 shadow-sm">
+      <span class="text-lg">🕋</span>
+      <div class="flex flex-col">
+        <span class="text-xs font-bold text-amber-900 leading-tight">Umrah Quest 3D</span>
+        <span class="text-[11px] text-amber-700 font-medium">Sabr • Shukr • Forgiveness</span>
+      </div>
+    </div>
+
+    <!-- 5 Virtues Tracker Bar -->
+    <div id="virtue-badges-bar" class="pointer-events-auto flex items-center gap-1 sm:gap-2">
+      <!-- Injected by GameManager -->
+    </div>
+
+    <!-- Controls (Audio & Fullscreen) -->
+    <div class="pointer-events-auto flex items-center gap-1.5">
+      <button id="btn-sound-toggle" class="bg-white/90 hover:bg-white text-gray-700 text-xs font-semibold px-2.5 py-1.5 rounded-full border border-gray-200 shadow-sm transition active:scale-95" title="Toggle Sound">
+        🔊 Sound On
+      </button>
+      <button id="btn-fullscreen-toggle" class="bg-white/90 hover:bg-white text-gray-700 text-xs font-semibold px-2.5 py-1.5 rounded-full border border-gray-200 shadow-sm transition active:scale-95 hidden sm:inline-block" title="Toggle Fullscreen">
+        ⛶ Fullscreen
+      </button>
+    </div>
+  </header>
+
+  <!-- VIRTUE TOAST NOTIFICATION -->
+  <div id="virtue-toast" class="hidden absolute top-16 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-full shadow-lg border border-emerald-400/50 animate-bounce text-sm font-semibold">
+    <span>✨</span>
+    <span id="virtue-toast-text">Virtue Mastered!</span>
+  </div>
+
+  <!-- FLOATING QURAN AYAH CARD (Centered or bottom) -->
+  <div id="ayah-floating-card" class="interactive-ui absolute bottom-20 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-20 w-[92%] sm:w-auto sm:max-w-xl pointer-events-auto">
+    <div class="glass-dark rounded-2xl p-3 sm:p-4 shadow-xl border border-white/20 flex flex-col gap-2">
+      <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <div class="flex items-center gap-1.5">
+          <span class="text-amber-400 text-xs">📖</span>
+          <span id="ayah-title" class="text-xs font-bold text-amber-300">Quranic Guidance</span>
+          <span id="ayah-reference" class="text-[11px] text-gray-400 ml-1">Al-Baqarah</span>
+        </div>
+        <button id="btn-listen-ayah" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 transition active:scale-95">
+          <span>▶</span> <span>Listen Recitation</span>
+        </button>
+      </div>
+
+      <!-- Arabic Ayat Text -->
+      <p id="ayah-arabic" class="arabic-text text-lg sm:text-2xl text-emerald-100 text-center leading-relaxed font-semibold">
+        رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ
+      </p>
+
+      <!-- English Translation & Transliteration -->
+      <div class="text-center">
+        <p id="ayah-translation" class="text-xs sm:text-sm text-gray-200 italic leading-snug">
+          "Our Lord, give us in this world that which is good and in the Hereafter that which is good..."
+        </p>
+        <p id="ayah-transliteration" class="text-[11px] text-amber-200/80 mt-1 font-mono">
+          Rabbanaa aatinaa fid-dunyaa hasanatan wa fil-aakhirati hasanah...
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ON-SCREEN MOBILE JOYSTICK & GUIDE CONTROLS -->
+  <div class="absolute bottom-4 left-4 z-20 pointer-events-auto">
+    <div id="touch-joystick-area" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white/30 backdrop-blur-md border-2 border-white/60 shadow-lg relative flex items-center justify-center">
+      <div id="touch-joystick-thumb" class="w-10 h-10 rounded-full bg-emerald-600/90 shadow-md transform transition-transform pointer-events-none flex items-center justify-center text-white text-xs">
+        ▲
+      </div>
+    </div>
+    <span class="text-[10px] text-gray-600 font-semibold text-center block mt-1 bg-white/70 rounded px-1">Walk (Touch)</span>
+  </div>
+
+  <!-- Bottom-Right Auto-Walk / Next Step Guide Button -->
+  <div class="absolute bottom-4 right-4 z-20 pointer-events-auto flex flex-col items-end gap-2">
+    <button id="btn-guide-step" class="interactive-ui bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-full shadow-lg border-2 border-amber-300 flex items-center gap-1.5 transition active:scale-95 pulse-glow">
+      <span>👣</span> <span>Guide Next Step</span>
+    </button>
+    <span class="text-[10px] text-gray-600 font-semibold bg-white/70 rounded px-1.5 py-0.5">Drag right screen to look</span>
+  </div>
+
+  <!-- STAGE 0: WELCOME & LITTLE PILGRIM SETUP -->
+  <div id="panel-welcome" class="stage-panel interactive-ui absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+    <div class="glass-card max-w-md w-full rounded-3xl p-6 sm:p-7 shadow-2xl border border-amber-200/80 flex flex-col gap-4 text-center">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-3xl shadow-inner">
+        🕋
+      </div>
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-amber-950">Little Pilgrim's Umrah</h1>
+        <p class="text-xs sm:text-sm text-amber-800 mt-1">A 3D First-Person Adventure of Sabr, Shukr & Forgiveness</p>
+      </div>
+
+      <div class="bg-amber-50/80 rounded-2xl p-3.5 border border-amber-200/60 text-left text-xs text-amber-900 space-y-2">
+        <div class="font-bold text-amber-950 flex items-center gap-1">
+          <span>🌟</span> <span>What you will learn & practice:</span>
+        </div>
+        <p>🤍 <strong>Sincere Intention (Ikhlas):</strong> Starting solely for Allah's love.</p>
+        <p>🛡️ <strong>Sabr (Patience):</strong> Never getting angry, giving way to others in the crowd with a warm smile.</p>
+        <p>🎯 <strong>Khushu (Focus):</strong> 7 circuits of Tawaf with eyes and heart fixed on Allah.</p>
+        <p>🤲 <strong>Shukr (Gratitude):</strong> Tasting Zamzam & remembering Mother Hajar's reliance on Allah.</p>
+        <p>✨ <strong>Forgiveness:</strong> Cutting hair as a fresh clean start, forgiving everyone.</p>
+      </div>
+
+      <!-- Player Profile Form -->
+      <div class="flex flex-col gap-3 text-left">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Pilgrim's Name:</label>
+          <input id="player-name-input" type="text" value="Zayd" placeholder="Enter your name" class="w-full px-3 py-2 text-sm rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Pilgrim Attire:</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-2 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-emerald-400">
+              <input type="radio" name="gender" id="gender-boy" checked>
+              <span>👦 Boy (Ihram cloths)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-emerald-400">
+              <input type="radio" name="gender" id="gender-girl">
+              <span>👧 Girl (Modest gown)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-[11px] text-gray-500 italic">
+        🎵 100% Halal: Pure Quran Recitation & Natural Audio. Strictly No Music.
+      </div>
+
+      <button id="btn-start-journey" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-2xl shadow-lg transition transform active:scale-95 text-base flex items-center justify-center gap-2">
+        <span>Bismillah! Begin My Umrah</span> <span>➔</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 1: INTENTION & SABR SHIELD -->
+  <div id="panel-intention" class="stage-panel hidden interactive-ui absolute top-14 left-4 right-4 sm:left-6 sm:max-w-md z-20">
+    <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-xl border border-amber-200 flex flex-col gap-3 max-h-[75vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🤍</span>
+          <div>
+            <h2 class="text-base font-bold text-gray-900 leading-tight">Step 1: The Meeqat & Intention</h2>
+            <p class="text-xs text-emerald-700 font-semibold">Ihram, Talbiyah & The Sabr Shield</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Talbiyah Learning Box -->
+      <div class="bg-emerald-50 rounded-xl p-3 border border-emerald-200 text-center">
+        <span class="text-xs font-bold text-emerald-900 block mb-1">Chant the Talbiyah (Here I am, O Allah!):</span>
+        <p class="arabic-text text-base sm:text-lg font-bold text-emerald-800">
+          لَبَّيْكَ اللَّهُمَّ لَبَّيْكَ، لَبَّيْكَ لَا شَرِيكَ لَكَ لَبَّيْكَ، إِنَّ الْحَمْدَ وَالنِّعْمَةَ لَكَ وَالْمُلْكَ، لَا شَرِيكَ لَكَ
+        </p>
+        <p class="text-[11px] text-emerald-900/80 italic mt-1">
+          "Labbayk Allahumma Labbayk, Labbayka La Shareeka Laka Labbayk..."
+        </p>
+      </div>
+
+      <!-- Sabr Shield Mini-Game -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-bold text-amber-950">🛡️ Sabr Shield Challenge:</span>
+          <span class="text-[11px] text-amber-700 font-medium">Tap each test to activate patience!</span>
+        </div>
+        <div id="sabr-bubbles-container" class="flex flex-col gap-2">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+      <button id="btn-proceed-to-tawaf" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2">
+        <span>Enter Masjid Al-Haram for Tawaf</span> <span>➔</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 2: TAWAF AROUND THE KA'BAH -->
+  <div id="panel-tawaf" class="stage-panel hidden interactive-ui absolute top-14 left-4 right-4 sm:left-6 sm:max-w-md z-20">
+    <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-xl border border-amber-200 flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🕋</span>
+          <div>
+            <h2 class="text-base font-bold text-gray-900 leading-tight">Step 2: Tawaf (7 Circuits)</h2>
+            <p class="text-xs text-amber-700 font-medium">Counter-clockwise around the Ka'bah</p>
+          </div>
+        </div>
+        <div class="bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full border border-amber-300">
+          <span id="tawaf-circuit-count">0 / 7</span>
+        </div>
+      </div>
+
+      <!-- Green Light Starting Line Tip -->
+      <div class="bg-emerald-50 rounded-xl p-2.5 border border-emerald-200 flex items-start gap-2 text-xs text-emerald-950">
+        <span class="text-emerald-600 text-base">🟢</span>
+        <div>
+          <strong class="font-bold">The Green Light Starting Line:</strong>
+          <p class="text-[11px] text-emerald-800 leading-tight mt-0.5">
+            Look for the glowing green beacon! Every circuit begins and ends directly aligned with the Black Stone (al-Hajar al-Aswad).
+          </p>
+        </div>
+      </div>
+
+      <!-- Current Dhikr & Corner info -->
+      <div class="bg-gray-50 rounded-xl p-2.5 border border-gray-200">
+        <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block">Dhikr for this Circuit:</span>
+        <p id="tawaf-circuit-dhikr" class="text-xs sm:text-sm font-bold text-gray-900 mt-0.5">
+          Face the Ka’bah at the Green Light line to begin!
+        </p>
+        <p id="tawaf-corner-info" class="text-[11px] text-gray-600 mt-1 italic">
+          Start here! Face Ka'bah, raise right hand: Bismillahi Allahu Akbar!
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btn-advance-tawaf" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-3 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-1.5">
+          <span>🔄</span> <span>Complete Circuit</span>
+        </button>
+      </div>
+
+      <button id="btn-proceed-to-maqam" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2">
+        <span>7 Circuits Done! Pray at Maqam Ibrahim</span> <span>➔</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 3: MAQAM IBRAHIM -->
+  <div id="panel-maqam" class="stage-panel hidden interactive-ui absolute top-14 left-4 right-4 sm:left-6 sm:max-w-md z-20">
+    <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-xl border border-amber-200 flex flex-col gap-3">
+      <div class="flex items-center gap-2 border-b border-gray-100 pb-2">
+        <span class="text-xl">🕌</span>
+        <div>
+          <h2 class="text-base font-bold text-gray-900 leading-tight">Step 3: Maqam Ibrahim</h2>
+          <p class="text-xs text-amber-700 font-medium">Station of Prophet Ibrahim (peace be upon him)</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-700 leading-relaxed">
+        After completing 7 circuits, we pray 2 gentle Rak'ahs of prayer behind Maqam Ibrahim, reciting Surah Al-Kafirun and Surah Al-Ikhlas with pure focus (Khushu).
+      </p>
+
+      <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs text-amber-900">
+        💡 <strong>Did you know?</strong> This crystal shrine holds the stone that Prophet Ibrahim stood on while building the Ka'bah with his son Ismail!
+      </div>
+
+      <button id="btn-proceed-to-zamzam" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2">
+        <span>Drink Blessed Zamzam Water</span> <span>➔</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 3B: ZAMZAM WATER & SHUKR -->
+  <div id="panel-zamzam" class="stage-panel hidden interactive-ui absolute top-14 left-4 right-4 sm:left-6 sm:max-w-md z-20">
+    <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-xl border border-amber-200 flex flex-col gap-3">
+      <div class="flex items-center gap-2 border-b border-gray-100 pb-2">
+        <span class="text-xl">💧</span>
+        <div>
+          <h2 class="text-base font-bold text-gray-900 leading-tight">Drink Zamzam with Shukr (Thanks)</h2>
+          <p class="text-xs text-emerald-700 font-medium">The Miraculous Spring of Makkah</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-700 leading-relaxed">
+        Turn towards the Ka'bah, say Bismillah, drink in 3 calm sips with your right hand, and thank Allah for all His blessings!
+      </p>
+
+      <!-- Interactive Zamzam Cup Button -->
+      <button id="zamzam-cup-btn" class="interactive-ui bg-blue-50 hover:bg-blue-100 text-blue-900 border-2 border-blue-300 rounded-2xl p-3 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm shadow-sm transition active:scale-95">
+        <span>🥛</span> <span>Tap to Drink Zamzam in 3 Sips</span>
+      </button>
+
+      <div class="bg-blue-50/60 p-2.5 rounded-xl border border-blue-200/60 text-xs text-blue-950">
+        <strong>The Prophet's Du'a for Zamzam:</strong>
+        <p class="arabic-text text-sm font-semibold mt-1 text-right">
+          اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا وَاسِعًا، وَشِفَاءً مِنْ كُلِّ دَاءٍ
+        </p>
+        <p class="text-[11px] italic text-blue-800 mt-0.5">
+          "O Allah, I ask You for beneficial knowledge, abundant provision, and cure from every ailment."
+        </p>
+      </div>
+
+      <button id="btn-proceed-to-sai" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2">
+        <span>Proceed to Safa & Marwah (Sa'i)</span> <span>➔</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 4: SA'I (SAFA & MARWAH) -->
+  <div id="panel-sai" class="stage-panel hidden interactive-ui absolute top-14 left-4 right-4 sm:left-6 sm:max-w-md z-20">
+    <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-xl border border-amber-200 flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⛰️</span>
+          <div>
+            <h2 class="text-base font-bold text-gray-900 leading-tight">Step 4: Sa'i (Safa & Marwah)</h2>
+            <p class="text-xs text-emerald-700 font-medium">Walking the Path of Mother Hajar</p>
+          </div>
+        </div>
+        <div class="bg-emerald-100 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full border border-emerald-300">
+          <span id="sai-lap-count">0 / 7 Laps</span>
+        </div>
+      </div>
+
+      <!-- Story & Sabr Lesson -->
+      <div class="bg-amber-50 rounded-xl p-2.5 border border-amber-200 text-xs text-amber-950">
+        <strong class="font-bold flex items-center gap-1">
+          <span>🌿</span> <span>The Ultimate Lesson of Sabr:</span>
+        </strong>
+        <p class="text-[11px] text-amber-900 mt-1 leading-snug">
+          Lady Hajar walked between these two hills with patience (Sabr) and complete trust in Allah (Tawakkul). Because she never gave up, Allah brought forth the Zamzam spring!
+        </p>
+      </div>
+
+      <!-- Green Lights Zone alert -->
+      <div class="bg-emerald-50 rounded-xl p-2 border border-emerald-200 flex items-center gap-2 text-xs text-emerald-900">
+        <span class="text-lg">🏃‍♂️</span>
+        <span class="text-[11px] leading-tight font-medium">
+          <strong>Green Light Zone:</strong> Hasten and jog briskly when passing under the emerald lights!
+        </span>
+      </div>
+
+      <div class="bg-gray-50 rounded-xl p-2.5 border border-gray-200">
+        <p id="sai-lap-info" class="text-xs font-medium text-gray-800">
+          Begin Lap 1 at Mount Safa! Face the Ka’bah and make sincere du'a.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btn-advance-sai" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-1.5">
+          <span>⛰️</span> <span>Complete This Lap</span>
+        </button>
+      </div>
+
+      <button id="btn-proceed-to-taqsir" class="hidden w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2">
+        <span>7 Laps Done! Proceed to Hair Trimming</span> <span>➔</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 5: TAQSIR / HALQ (TRIMMING HAIR) -->
+  <div id="panel-taqsir" class="stage-panel hidden interactive-ui absolute top-14 left-4 right-4 sm:left-6 sm:max-w-md z-20">
+    <div class="glass-card rounded-2xl p-4 sm:p-5 shadow-xl border border-amber-200 flex flex-col gap-3">
+      <div class="flex items-center gap-2 border-b border-gray-100 pb-2">
+        <span class="text-xl">✂️</span>
+        <div>
+          <h2 class="text-base font-bold text-gray-900 leading-tight">Step 5: Taqsir & Forgiveness</h2>
+          <p class="text-xs text-amber-700 font-medium">Shedding Sins & Fresh Clean Heart</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-700 leading-relaxed">
+        The final rite of Umrah! Boys trim their hair evenly, and girls trim a fingertip length. This represents humility before Allah and starting life fresh with all mistakes forgiven.
+      </p>
+
+      <div class="bg-amber-50 rounded-xl p-2.5 border border-amber-200 text-xs text-amber-950">
+        ✨ <strong>The Prophet's Supplication:</strong>
+        <p class="text-[11px] text-amber-800 italic mt-0.5">
+          "The Messenger of Allah prayed three times for mercy and forgiveness for those who cut their hair with humility!"
+        </p>
+      </div>
+
+      <button id="btn-cut-hair" class="interactive-ui bg-amber-50 hover:bg-amber-100 text-amber-950 border-2 border-amber-300 rounded-2xl p-3 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm shadow-sm transition active:scale-95">
+        <span>✂️</span> <span>Trim Hair with Humility & Sincere Istighfar</span>
+      </button>
+
+      <button id="btn-finish-umrah" class="hidden w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-2">
+        <span>🎉 Umrah Completed! Claim Your Diploma</span> <span>➔</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 6: COMPLETION & DIPLOMA -->
+  <div id="panel-complete" class="stage-panel hidden interactive-ui absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-md">
+    <div class="glass-card max-w-lg w-full rounded-3xl p-6 sm:p-8 shadow-2xl border-4 border-amber-300 text-center flex flex-col gap-4 relative overflow-hidden">
+      <!-- Decorative background arches -->
+      <div class="absolute -top-12 -left-12 w-32 h-32 bg-amber-200/40 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 -right-12 w-32 h-32 bg-emerald-200/40 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="w-16 h-16 mx-auto rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center text-3xl shadow-inner">
+        🌟
+      </div>
+
+      <div>
+        <span class="text-xs font-bold text-amber-700 uppercase tracking-widest block">Official Certificate of Completion</span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-amber-950 mt-1">Umrah Maqbool & Mabroor!</h2>
+        <p class="text-xs text-gray-600 mt-1">May Allah accept your pilgrimage and fill your heart with light.</p>
+      </div>
+
+      <!-- Child Diploma Card -->
+      <div class="bg-amber-50/90 rounded-2xl p-4 border border-amber-300 shadow-inner flex flex-col gap-2">
+        <span class="text-xs text-amber-800">This certifies that</span>
+        <h3 id="diploma-child-name" class="text-2xl font-black text-emerald-800 tracking-wide underline decoration-amber-400">
+          Little Pilgrim
+        </h3>
+        <p class="text-xs text-amber-900">
+          has successfully performed the holy rites of Umrah with:
+        </p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px] font-bold text-amber-950 mt-1">
+          <span class="bg-white/80 p-1 rounded-lg border border-amber-200">🤍 Sincerity (Ikhlas)</span>
+          <span class="bg-white/80 p-1 rounded-lg border border-amber-200">🛡️ Patience (Sabr)</span>
+          <span class="bg-white/80 p-1 rounded-lg border border-amber-200">🎯 Focus (Khushu)</span>
+          <span class="bg-white/80 p-1 rounded-lg border border-amber-200">🤲 Thanks (Shukr)</span>
+          <span class="bg-white/80 p-1 rounded-lg border border-amber-200 col-span-2 sm:col-span-1">✨ Full Forgiveness</span>
+        </div>
+        <div class="text-[10px] text-gray-500 mt-1 border-t border-amber-200/60 pt-1">
+          Date: <span id="diploma-date">November 2026</span> • Al-Masjid Al-Haram, Makkah
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-2 mt-1">
+        <button id="btn-print-diploma" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-1.5">
+          <span>🖨️</span> <span>Save / Print Diploma</span>
+        </button>
+        <button id="btn-explore-freely" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl shadow transition active:scale-95 text-xs sm:text-sm flex items-center justify-center gap-1.5">
+          <span>🚶‍♂️</span> <span>Explore 3D Freely</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INLINE BUNDLED SCRIPT -->
+  <script>
+    /* BUNDLE_INJECTION_POINT */
+  </script>
+</body>
+</html>
