@@ -91,7 +91,7 @@ export class FirstPersonController {
   setupMouse() {
     this.domElement.addEventListener('mousedown', e => {
       // If clicking interactive UI buttons, ignore
-      if (e.target.closest('.interactive-ui')) return;
+      if (e.target.closest('.interactive-ui') || e.target.closest('.stage-panel') || e.target.closest('button') || e.target.closest('input')) return;
       soundManager.unlockAudio();
       this.isMouseDown = true;
       this.lastMouse.x = e.clientX;
@@ -165,7 +165,7 @@ export class FirstPersonController {
     window.addEventListener('touchstart', e => {
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
-        if (touch.target.closest('.interactive-ui')) continue;
+        if (touch.target.closest('.interactive-ui') || touch.target.closest('.stage-panel') || touch.target.closest('button') || touch.target.closest('input')) continue;
         if (touch.clientX > window.innerWidth * 0.4 && this.lookTouchId === null) {
           this.lookTouchId = touch.identifier;
           this.lastTouchLook = { x: touch.clientX, y: touch.clientY };

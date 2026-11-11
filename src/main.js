@@ -24,18 +24,24 @@ class App {
     this.camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 500);
     this.camera.position.set(0, 1.6, 26);
 
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: 'high-performance'
-    });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    try {
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: 'high-performance'
+      });
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.05;
 
-    this.container.appendChild(this.renderer.domElement);
+      if (this.container) {
+        this.container.appendChild(this.renderer.domElement);
+      }
+    } catch (e) {
+      console.warn('WebGL initialization warning:', e);
+    }
 
     // Warm daylight sun
     const hemiLight = new THREE.HemisphereLight(0xfffef5, 0xebdcc7, 1.1);
@@ -45,8 +51,8 @@ class App {
     const dirLight = new THREE.DirectionalLight(0xfff8e7, 1.5);
     dirLight.position.set(40, 60, 30);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
     dirLight.shadow.camera.near = 10;
     dirLight.shadow.camera.far = 150;
     dirLight.shadow.camera.left = -40;
@@ -64,92 +70,28 @@ class App {
     this.saiScene = new SaiScene(this.scene);
     this.saiScene.setVisible(false);
 
-    this.controls = new FirstPersonController(this.camera, this.renderer.domElement);
+    const domTarget = this.renderer ? this.renderer.domElement : document.body;
+    this.controls = new FirstPersonController(this.camera, domTarget);
   }
 
   initGame() {
     this.game = new GameManager(this.matafScene, this.saiScene, this.controls, this.camera);
-
-    // Wire up stage progression buttons
-    document.getElementById('btn-proceed-to-tawaf')?.addEventListener('click', () => {
-      this.game.setStage('tawaf');
-    });
-
-    document.getElementById('btn-advance-tawaf')?.addEventListener('click', () => {
-      this.game.advanceTawafCircuit();
-    });
-
-    document.getElementById('btn-proceed-to-maqam')?.addEventListener('click', () => {
-      this.game.setStage('maqam');
-    });
-
-    document.getElementById('btn-proceed-to-zamzam')?.addEventListener('click', () => {
-      this.game.setStage('zamzam');
-    });
-
-    document.getElementById('btn-drink-zamzam')?.addEventListener('click', () => {
-      soundManager.playZamzamWaterSound();
-      soundManager.playVirtueChime();
-      const cup = document.getElementById('zamzam-cup-btn');
-      if (cup) {
-        cup.innerHTML = '💧 <span>Drank 3 sips with Bismillah! Alhamdulillah!</span>';
-        cup.classList.add('bg-emerald-100', 'text-emerald-900', 'border-emerald-400');
-      }
-      setTimeout(() => {
-        document.getElementById('btn-proceed-to-sai')?.classList.remove('hidden');
-      }, 1000);
-    });
-
-    document.getElementById('btn-proceed-to-sai')?.addEventListener('click', () => {
-      this.game.setStage('sai');
-    });
-
-    document.getElementById('btn-advance-sai')?.addEventListener('click', () => {
-      this.game.advanceSaiLap();
-    });
-
-    document.getElementById('btn-proceed-to-taqsir')?.addEventListener('click', () => {
-      this.game.setStage('taqsir');
-    });
-
-    document.getElementById('btn-cut-hair')?.addEventListener('click', () => {
-      soundManager.playVirtueChime();
-      this.game.unlockVirtue('forgiveness');
-      const hairBtn = document.getElementById('btn-cut-hair');
-      if (hairBtn) {
-        hairBtn.innerHTML = '✂️ <span>Hair Trimmed with Humility! Sins Forgiven!</span>';
-        hairBtn.classList.add('bg-emerald-100', 'text-emerald-900', 'border-emerald-400');
-      }
-      setTimeout(() => {
-        document.getElementById('btn-finish-umrah')?.classList.remove('hidden');
-      }, 1000);
-    });
-
-    document.getElementById('btn-finish-umrah')?.addEventListener('click', () => {
-      this.game.setStage('complete');
-    });
-
-    document.getElementById('btn-explore-freely')?.addEventListener('click', () => {
-      document.getElementById('panel-complete')?.classList.add('hidden');
-      this.game.showVirtueNotification('ikhlas');
-    });
-
-    document.getElementById('btn-print-diploma')?.addEventListener('click', () => {
-      window.print();
-    });
   }
 
   bindGlobalEvents() {
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      if (this.renderer) {
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+      }
     });
 
     // Fullscreen toggle
     const btnFullscreen = document.getElementById('btn-fullscreen-toggle');
     if (btnFullscreen) {
-      btnFullscreen.addEventListener('click', () => {
+      btnFullscreen.addEventListener('click', (e) => {
+        e.preventDefault();
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen().catch(() => {});
           btnFullscreen.textContent = '⤓ Exit';
@@ -159,6 +101,10 @@ class App {
         }
       });
     }
+
+    // Unlock audio on any global interaction
+    window.addEventListener('pointerdown', () => soundManager.unlockAudio(), { once: true });
+    window.addEventListener('keydown', () => soundManager.unlockAudio(), { once: true });
   }
 
   animate() {
@@ -167,21 +113,35 @@ class App {
     const delta = Math.min(this.clock.getDelta(), 0.1);
 
     // Update Controls & Bounds
-    this.controls.update(delta, (newX, newZ, curPos) => {
-      return this.game.checkBounds(newX, newZ, curPos);
-    });
-
-    // Update Scenes
-    if (this.game.currentStage === 'sai') {
-      this.saiScene.update(delta, this.camera.position);
-    } else {
-      this.matafScene.update(delta, this.camera.position);
+    if (this.controls && this.game) {
+      this.controls.update(delta, (newX, newZ, curPos) => {
+        return this.game.checkBounds(newX, newZ, curPos);
+      });
     }
 
-    this.renderer.render(this.scene, this.camera);
+    // Update Scenes
+    if (this.game && this.game.currentStage === 'sai') {
+      if (this.saiScene) this.saiScene.update(delta, this.camera.position);
+    } else {
+      if (this.matafScene) this.matafScene.update(delta, this.camera.position);
+    }
+
+    if (this.renderer && this.scene && this.camera) {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new App();
-});
+function startApp() {
+  try {
+    new App();
+  } catch (err) {
+    console.error('App init error:', err);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}

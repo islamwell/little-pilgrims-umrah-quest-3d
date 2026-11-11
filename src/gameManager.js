@@ -13,13 +13,13 @@ export class GameManager {
     this.characterGender = 'boy'; // 'boy' or 'girl'
     this.currentStage = 'welcome'; // welcome, intention, tawaf, maqam, zamzam, sai, taqsir, complete
 
-    // Virtues unlocked
+    // 5 Spiritual Virtues
     this.virtues = {
-      ikhlas: false,   // Sincerity & Intention
-      sabr: false,     // Patience & Anger Control
-      khushu: false,   // Focus in Worship
-      shukr: false,    // Gratitude
-      forgiveness: false // Forgiveness & Clean Heart
+      ikhlas: false,       // Sincerity & Intention
+      sabr: false,         // Patience & Self-Restraint
+      khushu: false,       // Focus & Devotion
+      shukr: false,        // Gratitude & Trust
+      forgiveness: false   // Humility & Forgiveness
     };
 
     // Tawaf tracking
@@ -32,8 +32,8 @@ export class GameManager {
     this.saiCurrentEnd = 'safa'; // 'safa' or 'marwah'
     this.saiCompleted = false;
 
-    // Active modal / dialog state
-    this.activeAyahKey = null;
+    // Active Quran Ayah
+    this.activeAyahKey = 'ihram';
 
     this.initUI();
   }
@@ -41,13 +41,15 @@ export class GameManager {
   initUI() {
     this.bindEvents();
     this.updateVirtueBadgesUI();
+    this.setStage('welcome');
   }
 
   bindEvents() {
-    // Start Journey button
+    // 1. Welcome -> Start Journey
     const btnStart = document.getElementById('btn-start-journey');
     if (btnStart) {
-      btnStart.addEventListener('click', () => {
+      const handleStart = (e) => {
+        if (e) e.preventDefault();
         soundManager.unlockAudio();
         const nameInput = document.getElementById('player-name-input');
         if (nameInput && nameInput.value.trim()) {
@@ -55,46 +57,206 @@ export class GameManager {
         }
         const boyRadio = document.getElementById('gender-boy');
         this.characterGender = (boyRadio && boyRadio.checked) ? 'boy' : 'girl';
-
         this.setStage('intention');
+      };
+      btnStart.addEventListener('click', handleStart);
+      btnStart.addEventListener('touchend', handleStart);
+    }
+
+    // 2. Intention -> Proceed to Tawaf
+    const btnProceedToTawaf = document.getElementById('btn-proceed-to-tawaf');
+    if (btnProceedToTawaf) {
+      btnProceedToTawaf.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.unlockVirtue('ikhlas');
+        this.unlockVirtue('sabr');
+        this.setStage('tawaf');
       });
     }
 
-    // Sound toggle button
+    // 3. Tawaf -> Advance Circuit Button
+    const btnAdvanceTawaf = document.getElementById('btn-advance-tawaf');
+    if (btnAdvanceTawaf) {
+      btnAdvanceTawaf.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.advanceTawafCircuit();
+      });
+    }
+
+    // 4. Tawaf -> Proceed to Maqam Ibrahim
+    const btnProceedToMaqam = document.getElementById('btn-proceed-to-maqam');
+    if (btnProceedToMaqam) {
+      btnProceedToMaqam.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.setStage('maqam');
+      });
+    }
+
+    // 5. Maqam Ibrahim -> Proceed to Zamzam
+    const btnProceedToZamzam = document.getElementById('btn-proceed-to-zamzam');
+    if (btnProceedToZamzam) {
+      btnProceedToZamzam.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.setStage('zamzam');
+      });
+    }
+
+    // 6. Drink Zamzam (supports both IDs)
+    const handleDrinkZamzam = (e) => {
+      if (e) e.preventDefault();
+      soundManager.unlockAudio();
+      soundManager.playZamzamWaterSound();
+      soundManager.playVirtueChime();
+      this.unlockVirtue('shukr');
+
+      const cup = document.getElementById('zamzam-cup-btn');
+      if (cup) {
+        cup.innerHTML = '💧 <span>Drank 3 calm sips with Bismillah! Alhamdulillah!</span>';
+        cup.classList.add('bg-emerald-100', 'text-emerald-950', 'border-emerald-400');
+      }
+      const nextBtn = document.getElementById('btn-proceed-to-sai');
+      if (nextBtn) {
+        nextBtn.classList.remove('hidden');
+        nextBtn.style.display = 'flex';
+      }
+    };
+    document.getElementById('zamzam-cup-btn')?.addEventListener('click', handleDrinkZamzam);
+    document.getElementById('btn-drink-zamzam')?.addEventListener('click', handleDrinkZamzam);
+
+    // 7. Proceed to Sa'i
+    const btnProceedToSai = document.getElementById('btn-proceed-to-sai');
+    if (btnProceedToSai) {
+      btnProceedToSai.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.setStage('sai');
+      });
+    }
+
+    // 8. Sa'i -> Advance Lap Button
+    const btnAdvanceSai = document.getElementById('btn-advance-sai');
+    if (btnAdvanceSai) {
+      btnAdvanceSai.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.advanceSaiLap();
+      });
+    }
+
+    // 9. Sa'i -> Proceed to Taqsir / Halq
+    const btnProceedToTaqsir = document.getElementById('btn-proceed-to-taqsir');
+    if (btnProceedToTaqsir) {
+      btnProceedToTaqsir.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.setStage('taqsir');
+      });
+    }
+
+    // 10. Cut/Trim Hair Button
+    const btnCutHair = document.getElementById('btn-cut-hair');
+    if (btnCutHair) {
+      btnCutHair.addEventListener('click', (e) => {
+        e.preventDefault();
+        soundManager.unlockAudio();
+        soundManager.playVirtueChime();
+        this.unlockVirtue('forgiveness');
+
+        btnCutHair.innerHTML = '✂️ <span>Hair Trimmed with Humility! Sins Forgiven!</span>';
+        btnCutHair.classList.add('bg-emerald-100', 'text-emerald-950', 'border-emerald-400');
+
+        const finishBtn = document.getElementById('btn-finish-umrah');
+        if (finishBtn) {
+          finishBtn.classList.remove('hidden');
+          finishBtn.style.display = 'flex';
+        }
+      });
+    }
+
+    // 11. Finish Umrah -> Diploma
+    const btnFinishUmrah = document.getElementById('btn-finish-umrah');
+    if (btnFinishUmrah) {
+      btnFinishUmrah.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.setStage('complete');
+      });
+    }
+
+    // 12. Diploma: Print
+    document.getElementById('btn-print-diploma')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.print();
+    });
+
+    // 13. Diploma: Explore 3D Freely
+    document.getElementById('btn-explore-freely')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const panelComplete = document.getElementById('panel-complete');
+      if (panelComplete) {
+        panelComplete.classList.add('hidden');
+        panelComplete.style.display = 'none';
+      }
+      this.showVirtueNotification('ikhlas');
+    });
+
+    // 14. Diploma: Restart Quest
+    document.getElementById('btn-restart-quest')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.resetGame();
+      this.setStage('welcome');
+    });
+
+    // 15. Sound Toggle
     const btnSound = document.getElementById('btn-sound-toggle');
     if (btnSound) {
-      btnSound.addEventListener('click', () => {
+      btnSound.addEventListener('click', (e) => {
+        e.preventDefault();
         soundManager.unlockAudio();
         const muted = soundManager.toggleMute();
         btnSound.textContent = muted ? '🔇 Sound Off' : '🔊 Sound On';
       });
     }
 
-    // Ayah audio listen button
+    // 16. Ayah Audio Play/Pause
     const btnListenAyah = document.getElementById('btn-listen-ayah');
     if (btnListenAyah) {
-      btnListenAyah.addEventListener('click', () => {
+      btnListenAyah.addEventListener('click', (e) => {
+        e.preventDefault();
+        soundManager.unlockAudio();
         if (this.activeAyahKey) {
           soundManager.playAyah(this.activeAyahKey);
         }
       });
     }
 
-    // Auto-walk guide button
+    // 17. Kid Auto-walk Guide Button
     const btnGuide = document.getElementById('btn-guide-step');
     if (btnGuide) {
-      btnGuide.addEventListener('click', () => {
+      btnGuide.addEventListener('click', (e) => {
+        e.preventDefault();
+        soundManager.unlockAudio();
         this.guideToNextTarget();
       });
+    }
+  }
+
+  hideAllPanels() {
+    document.querySelectorAll('.stage-panel').forEach(p => {
+      p.classList.add('hidden');
+      p.style.display = 'none';
+    });
+  }
+
+  showPanel(panelId) {
+    const p = document.getElementById(panelId);
+    if (p) {
+      p.classList.remove('hidden');
+      // Fullscreen modal panels use flex for centering; side cards use block
+      p.style.display = p.classList.contains('inset-0') ? 'flex' : 'block';
     }
   }
 
   setStage(stage) {
     this.currentStage = stage;
     soundManager.unlockAudio();
-
-    // Hide all stage UI panels
-    document.querySelectorAll('.stage-panel').forEach(p => p.classList.add('hidden'));
+    this.hideAllPanels();
 
     switch (stage) {
       case 'welcome':
@@ -178,11 +340,6 @@ export class GameManager {
     }
   }
 
-  showPanel(panelId) {
-    const p = document.getElementById(panelId);
-    if (p) p.classList.remove('hidden');
-  }
-
   updateAyahCard(key) {
     const data = QURAN_AYATS[key];
     if (!data) return;
@@ -214,6 +371,13 @@ export class GameManager {
     ];
 
     let cleared = 0;
+    const btnProceed = document.getElementById('btn-proceed-to-tawaf');
+    if (btnProceed) {
+      btnProceed.classList.remove('hidden');
+      btnProceed.style.display = 'flex';
+      btnProceed.innerHTML = `<span>Ready for Tawaf? Proceed to Ka'bah</span> <span>➔</span>`;
+    }
+
     distractions.forEach((item, idx) => {
       const bubble = document.createElement('button');
       bubble.className =
@@ -224,7 +388,8 @@ export class GameManager {
         <span class="text-xs text-gray-500 italic">Tap to activate Sabr!</span>
       `;
 
-      bubble.addEventListener('click', () => {
+      bubble.addEventListener('click', (e) => {
+        e.preventDefault();
         bubble.className =
           'sabr-bubble bg-emerald-50 text-emerald-950 border-2 border-emerald-400 rounded-xl p-3 text-left shadow-sm flex flex-col gap-1 w-full scale-100 transition';
         bubble.innerHTML = `
@@ -238,9 +403,9 @@ export class GameManager {
         if (cleared >= distractions.length) {
           this.unlockVirtue('ikhlas');
           this.unlockVirtue('sabr');
-          const btnProceed = document.getElementById('btn-proceed-to-tawaf');
           if (btnProceed) {
-            btnProceed.classList.remove('hidden');
+            btnProceed.innerHTML = `<span>🎉 Sabr Shield Mastered! Enter Mataf</span> <span>➔</span>`;
+            btnProceed.classList.add('ring-2', 'ring-amber-400');
             btnProceed.scrollIntoView({ behavior: 'smooth' });
           }
         }
@@ -288,7 +453,11 @@ export class GameManager {
         this.tawafCompleted = true;
         this.unlockVirtue('khushu');
         const btnMaqam = document.getElementById('btn-proceed-to-maqam');
-        if (btnMaqam) btnMaqam.classList.remove('hidden');
+        if (btnMaqam) {
+          btnMaqam.classList.remove('hidden');
+          btnMaqam.style.display = 'flex';
+          btnMaqam.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     }
   }
@@ -323,7 +492,11 @@ export class GameManager {
         this.saiCompleted = true;
         this.unlockVirtue('shukr');
         const btnTaqsir = document.getElementById('btn-proceed-to-taqsir');
-        if (btnTaqsir) btnTaqsir.classList.remove('hidden');
+        if (btnTaqsir) {
+          btnTaqsir.classList.remove('hidden');
+          btnTaqsir.style.display = 'flex';
+          btnTaqsir.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     }
   }
@@ -378,11 +551,11 @@ export class GameManager {
 
     toastText.textContent = titles[key] || 'Virtue Unlocked!';
     toast.classList.remove('hidden');
-    toast.classList.add('flex');
+    toast.style.display = 'flex';
 
     setTimeout(() => {
       toast.classList.add('hidden');
-      toast.classList.remove('flex');
+      toast.style.display = 'none';
     }, 3800);
   }
 
@@ -425,6 +598,23 @@ export class GameManager {
     soundManager.playVirtueChime();
   }
 
+  resetGame() {
+    this.tawafCircuit = 0;
+    this.currentTawafCornerIdx = 0;
+    this.tawafCompleted = false;
+    this.saiLap = 0;
+    this.saiCurrentEnd = 'safa';
+    this.saiCompleted = false;
+    this.virtues = {
+      ikhlas: false,
+      sabr: false,
+      khushu: false,
+      shukr: false,
+      forgiveness: false
+    };
+    this.updateVirtueBadgesUI();
+  }
+
   // Bounds checker to keep player on marble and outside Kaaba solid walls
   checkBounds(newX, newZ, currentPos) {
     if (this.currentStage === 'sai') {
@@ -449,7 +639,6 @@ export class GameManager {
     }
 
     // Mataf / Ka'bah bounds
-    // Keep within radius 55m from center
     const dist = Math.hypot(newX, newZ);
     let rx = newX;
     let rz = newZ;
@@ -458,14 +647,13 @@ export class GameManager {
       rz = (newZ / dist) * 55;
     }
 
-    // Ka'bah box collision (Ka'bah is 11m x 12.5m -> half extents 5.5m and 6.25m + 1.2m player margin)
+    // Ka'bah box collision
     const minX = -6.8;
     const maxX = 6.8;
     const minZ = -7.5;
     const maxZ = 7.5;
 
     if (rx > minX && rx < maxX && rz > minZ && rz < maxZ) {
-      // Revert to current position to avoid walking into Ka'bah
       return { x: currentPos.x, z: currentPos.z };
     }
 

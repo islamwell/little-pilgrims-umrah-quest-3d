@@ -69,19 +69,30 @@ export class SoundManager {
 
   unlockAudio() {
     this.hasInteracted = true;
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume();
+    try {
+      if (!this.audioCtx) {
+        this.init();
+      }
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+      this.startGentleWindAmbience();
+    } catch (e) {
+      console.warn('unlockAudio error:', e);
     }
-    this.startGentleWindAmbience();
   }
 
   toggleMute() {
     this.isMuted = !this.isMuted;
-    if (this.currentAyahAudio) {
-      this.currentAyahAudio.muted = this.isMuted;
-    }
-    if (this.windGain) {
-      this.windGain.gain.setValueAtTime(this.isMuted ? 0 : 0.04, this.audioCtx.currentTime);
+    try {
+      if (this.currentAyahAudio) {
+        this.currentAyahAudio.muted = this.isMuted;
+      }
+      if (this.windGain && this.audioCtx) {
+        this.windGain.gain.setValueAtTime(this.isMuted ? 0 : 0.04, this.audioCtx.currentTime);
+      }
+    } catch (e) {
+      console.warn('toggleMute error:', e);
     }
     return this.isMuted;
   }

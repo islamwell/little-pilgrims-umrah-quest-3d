@@ -19,8 +19,8 @@ async function build() {
   const templatePath = path.join(__dirname, 'index.template.html');
   const template = fs.readFileSync(templatePath, 'utf8');
 
-  // Replace injection point
-  const finalHtml = template.replace('/* BUNDLE_INJECTION_POINT */', bundleCode);
+  // Replace injection point safely without special $ pattern substitution
+  const finalHtml = template.replace('/* BUNDLE_INJECTION_POINT */', () => bundleCode);
 
   // 1. Output to dist/index.html
   const distDir = path.join(__dirname, 'dist');
